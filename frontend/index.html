@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>AI Blocks</title>
+  <script src="https://unpkg.com/blockly/blockly.min.js"></script>
+  <style>
+    #blocklyDiv {height: 480px; width: 800px; border: 1px solid grey;}
+    #outputArea {border: 1px solid green; padding: 10px; margin-top:10px; width: 800px; min-height: 50px;}
+    /* Basic layout styling */
+    body { display: flex; flex-direction: column; align-items: center; font-family: sans-serif; }
+    .container { display: flex; }
+    #blocklyToolboxDiv { /* Visibility is handled by Blockly */ }
+  </style>
+</head>
+<body>
+  <h1>AI Blocks - Like Scratch for AI!</h1>
+
+  <div class="container">
+    <div id="blocklyToolboxDiv" style="display: none;">
+      <xml xmlns="https://developers.google.com/blockly/xml">
+        <category name="Logic" colour="%{BKY_LOGIC_HUE}">
+          <block type="controls_if"></block>
+          <block type="logic_compare"></block>
+          <block type="logic_operation"></block>
+          <block type="logic_negate"></block>
+          <block type="logic_boolean"></block>
+        </category>
+        <category name="Loops" colour="%{BKY_LOOPS_HUE}">
+          <block type="controls_repeat_ext">
+            <value name="TIMES">
+              <shadow type="math_number">
+                <field name="NUM">10</field>
+              </shadow>
+            </value>
+          </block>
+        </category>
+        <category name="Math" colour="%{BKY_MATH_HUE}">
+          <block type="math_number">
+            <field name="NUM">123</field>
+          </block>
+          <block type="math_arithmetic">
+            <value name="A">
+              <shadow type="math_number">
+                <field name="NUM">1</field>
+              </shadow>
+            </value>
+            <value name="B">
+              <shadow type="math_number">
+                <field name="NUM">1</field>
+              </shadow>
+            </value>
+          </block>
+        </category>
+        <category name="Text" colour="%{BKY_TEXTS_HUE}">
+          <block type="text"></block>
+          <block type="text_print">
+            <value name="TEXT">
+              <shadow type="text">
+                <field name="TEXT">abc</field>
+              </shadow>
+            </value>
+          </block>
+        </category>
+        <category name="AI Blocks" colour="230">
+          <block type="ai_classify_image"></block>
+        </category>
+      </xml>
+    </div>
+    <div id="blocklyDiv"></div>
+  </div>
+
+  <div id="outputArea">
+    <p>Output will appear here...</p>
+  </div>
+
+  <button id="runButton">Run AI Program</button>
+
+  <div id="trainingDataArea" style="margin-top: 20px; padding: 10px; border: 1px solid blue; width: 800px;">
+    <h2>Train Your AI Model</h2>
+    <div>
+      <label for="category1Label">Category 1 Label:</label>
+      <input type="text" id="category1Label" placeholder="Label for Category 1" value="Category1">
+      <label for="category1Input" style="margin-left: 10px;">Examples (e.g., Apples):</label>
+      <input type="file" id="category1Input" name="category1Input" multiple accept="image/*">
+    </div>
+    <div style="margin-top: 10px;">
+      <label for="category2Label">Category 2 Label:</label>
+      <input type="text" id="category2Label" placeholder="Label for Category 2" value="Category2">
+      <label for="category2Input" style="margin-left: 10px;">Examples (e.g., Bananas):</label>
+      <input type="file" id="category2Input" name="category2Input" multiple accept="image/*">
+    </div>
+    <button id="trainModelButton" style="margin-top: 15px;">Train Model</button>
+    <div id="trainingStatusArea" style="margin-top: 10px;"></div>
+  </div>
+
+  <div style="margin-top: 20px;">
+    <label for="classifyImageInput">Image to Classify:</label>
+    <input type="file" id="classifyImageInput" accept="image/*">
+  </div>
+
+  <script>
+    // Custom Block Definition
+    Blockly.Blocks['ai_classify_image'] = {
+      init: function() {
+        this.appendDummyInput()
+            .appendField("Classify Image");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(230); // Example color
+        this.setTooltip("Calls the backend to classify an image.");
+        this.setHelpUrl("");
+      }
+    };
+
+    // Custom Block Code Generator
+    Blockly.JavaScript['ai_classify_image'] = function(block) {
+      var code = `
+        const classifyFile = document.getElementById('classifyImageInput').files[0];
+        if (!classifyFile) {
+          document.getElementById('outputArea').innerHTML = 'Please select an image to classify.';
+        } else {
+          const formData = new FormData();
+          formData.append('image', classifyFile);
+
+          document.getElementById('outputArea').innerHTML = 'Classifying...';
+          fetch('http://localhost:5000/classify_image', {
+            method: 'POST',
+            body: formData // FormData will set Content-Type to multipart/form-data
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.error) {
+              document.getElementById('outputArea').innerHTML = 'Error: ' + data.error;
+            } else {
+              document.getElementById('outputArea').innerHTML = 'Classification: ' + data.result;
+            }
+          })
+          .catch(error => {
+            document.getElementById('outputArea').innerHTML = 'Error: ' + error;
+            console.error('Classify Error:', error);
+          });
+        }
+      `;
+      return code;
+    };
+    
+    var toolbox = document.getElementById('blocklyToolboxDiv');
+    var workspace = Blockly.inject('blocklyDiv',
+        {
+          toolbox: toolbox,
+          scrollbars: true,
+          trashcan: true
+        });
+
+    // Event listener for the Run Code button
+    document.getElementById('runButton').addEventListener('click', function() {
+      // Generate JavaScript code and run it.
+      window.LoopTrap = 1000;
+      Blockly.JavaScript.INFINITE_LOOP_TRAP = 'if (--window.LoopTrap == 0) throw "Infinite loop.";';
+      var code = Blockly.JavaScript.workspaceToCode(workspace);
+      Blockly.JavaScript.INFINITE_LOOP_TRAP = null;
+      try {
+        eval(code);
+      } catch (e) {
+        alert(e);
+      }
+    });
+
+    // Event listener for the Train Model button
+    document.getElementById('trainModelButton').addEventListener('click', function() {
+      const formData = new FormData();
+      const cat1Files = document.getElementById('category1Input').files;
+      const cat2Files = document.getElementById('category2Input').files;
+      const cat1Label = document.getElementById('category1Label').value;
+      const cat2Label = document.getElementById('category2Label').value;
+
+      if (!cat1Files.length || !cat2Files.length) {
+        document.getElementById('trainingStatusArea').innerText = 'Please select files for both categories.';
+        return;
+      }
+      if (!cat1Label.trim() || !cat2Label.trim()) {
+        document.getElementById('trainingStatusArea').innerText = 'Please enter labels for both categories.';
+        return;
+      }
+
+      formData.append('category1_label', cat1Label);
+      for (let i = 0; i < cat1Files.length; i++) {
+        formData.append('category1_images', cat1Files[i]);
+      }
+      formData.append('category2_label', cat2Label);
+      for (let i = 0; i < cat2Files.length; i++) {
+        formData.append('category2_images', cat2Files[i]);
+      }
+
+      document.getElementById('trainingStatusArea').innerText = 'Training...';
+      fetch('http://localhost:5000/train_model', {
+        method: 'POST',
+        body: formData // FormData will set the Content-Type to multipart/form-data
+      })
+      .then(response => response.json())
+      .then(data => {
+        document.getElementById('trainingStatusArea').innerText = data.message || data.error || 'Training complete.';
+      })
+      .catch(error => {
+        document.getElementById('trainingStatusArea').innerText = 'Error training model: ' + error;
+        console.error('Training Error:', error);
+      });
+    });
+  </script>
+</body>
+</html>
